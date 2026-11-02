@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches theme.dart's seed color (0xFF1B5E20) — used for the launch
+         splash background so first-launch looks branded/intentional
+         instead of Flutter's stock plain-white screen. -->
+    <color name="splash_background">#FF1B5E20</color>
+	<color name="ic_launcher_background">#050B18</color>
+</resources>

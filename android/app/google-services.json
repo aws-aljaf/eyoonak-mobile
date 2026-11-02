@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "43197912726",
+    "project_id": "zone12",
+    "firebase_url": "https://zone12-default-rtdb.firebaseio.com",
+    "storage_bucket": "zone12.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:43197912726:android:377bab49df8f3df086d4b7",
+        "android_client_info": {
+          "package_name": "com.example.fleet_saas_driver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCMvZxa7y0BzEqG9cM9mPB8MiA6ES97S0E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:43197912726:android:0cbe92e8b08c552e86d4b7",
+        "android_client_info": {
+          "package_name": "com.eyoonak.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCMvZxa7y0BzEqG9cM9mPB8MiA6ES97S0E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
