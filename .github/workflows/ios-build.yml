@@ -80,11 +80,20 @@ jobs:
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security list-keychains -d user -s $KEYCHAIN_PATH $(security list-keychains -d user | tr -d '"')
 
-          # 2. Import Distribution Certificate
+          # 2. Import Distribution Certificate (Auto-adapts to legacy & modern PKCS#12)
           CERT_PATH=$RUNNER_TEMP/apple_cert.p12
           echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > $CERT_PATH
-          security import $CERT_PATH -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          if ! security import $CERT_PATH -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
+            echo "Direct PKCS#12 import failed (PBES2 mismatch). Converting to macOS legacy PKCS#12..."
+            openssl pkcs12 -in $CERT_PATH -passin pass:"$APPLE_CERTIFICATE_PASSWORD" -nodes -out $RUNNER_TEMP/cert_temp.pem
+            openssl pkcs12 -export -legacy -in $RUNNER_TEMP/cert_temp.pem -passout pass:"$APPLE_CERTIFICATE_PASSWORD" -out $RUNNER_TEMP/apple_cert_legacy.p12 2>/dev/null || \
+            openssl pkcs12 -export -in $RUNNER_TEMP/cert_temp.pem -passout pass:"$APPLE_CERTIFICATE_PASSWORD" -out $RUNNER_TEMP/apple_cert_legacy.p12
+            security import $RUNNER_TEMP/apple_cert_legacy.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+            rm -f $RUNNER_TEMP/cert_temp.pem $RUNNER_TEMP/apple_cert_legacy.p12
+          fi
+
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH || true
 
           # 3. Import Provisioning Profile
           PP_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
