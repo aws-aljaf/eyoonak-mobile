@@ -6,19 +6,17 @@ on:
       build_mode:
         description: 'Build Mode'
         required: true
-        default: 'unsigned_verification'
+        default: 'release_ipa'
         type: choice
         options:
-          - unsigned_verification
           - release_ipa
+          - unsigned_verification
 
 jobs:
   build-ios:
     name: Build iOS (${{ inputs.build_mode }})
     runs-on: macos-14
-    defaults:
-      run:
-        working-directory: .
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -34,14 +32,14 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: '3.47.0'
           cache: true
 
       - name: Flutter Doctor
         run: flutter doctor -v
 
       - name: Install Flutter Dependencies
-        run: flutter pub get
+        run: |
+          flutter pub get || (rm -f pubspec.lock && flutter pub get)
 
       - name: Generate Drift code
         run: dart run build_runner build --delete-conflicting-outputs
@@ -59,30 +57,32 @@ jobs:
           flutter build ios --release --no-codesign
 
       - name: Setup Apple Signing & Build IPA
-        if: ${{ inputs.build_mode == 'release_ipa' && env.APPLE_CERTIFICATE_BASE64 != '' }}
+        if: ${{ inputs.build_mode == 'release_ipa' }}
         env:
           APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD || 'eyoonak_temp_keychain' }}
         run: |
-          # Create temporary keychain
+          # 1. Create temporary keychain
           KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
           security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychains -d user -s $KEYCHAIN_PATH $(security list-keychains -d user | tr -d '"')
 
-          # Import Distribution Certificate
+          # 2. Import Distribution Certificate
           CERT_PATH=$RUNNER_TEMP/apple_cert.p12
-          echo -n "$APPLE_CERTIFICATE_BASE64" | base64 --decode -o $CERT_PATH
+          echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > $CERT_PATH
           security import $CERT_PATH -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
-          # Import Provisioning Profile
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo -n "$APPLE_PROVISIONING_PROFILE_BASE64" | base64 --decode -o ~/Library/MobileDevice/Provisioning\ Profiles/eyoonak_distribution.mobileprovision
+          # 3. Import Provisioning Profile
+          PP_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PP_DIR"
+          echo "$APPLE_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PP_DIR/eyoonak.mobileprovision"
 
-          # Build signed IPA
+          # 4. Build Signed IPA
           flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 
       - name: Upload iOS App Artifact
