@@ -37,19 +37,28 @@ jobs:
       - name: Flutter Doctor
         run: flutter doctor -v
 
+      - name: Prepare iOS SPM & Build Directories
+        run: |
+          mkdir -p build/ios/SourcePackages
+          mkdir -p ios/Flutter/ephemeral/Packages
+
       - name: Install Flutter Dependencies
         run: |
-          flutter pub get || (rm -f pubspec.lock && flutter pub get)
+          mkdir -p build/ios/SourcePackages
+          flutter pub get
 
       - name: Generate Drift code
         run: dart run build_runner build --delete-conflicting-outputs
         continue-on-error: true
 
-      - name: Install CocoaPods
+      - name: Install CocoaPods (if Podfile exists)
         run: |
-          cd ios
-          pod repo update
-          pod install --repo-update
+          if [ -f "ios/Podfile" ]; then
+            cd ios
+            pod install --repo-update
+          else
+            echo "Project uses Swift Package Manager (no Podfile present). Skipping CocoaPods."
+          fi
 
       - name: Verify & Build Unsigned iOS (.app)
         if: ${{ inputs.build_mode == 'unsigned_verification' }}
@@ -80,7 +89,12 @@ jobs:
           # 3. Import Provisioning Profile
           PP_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PP_DIR"
-          echo "$APPLE_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PP_DIR/eyoonak.mobileprovision"
+          echo "$APPLE_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PP_DIR/Eyoonak_App_Store.mobileprovision"
+          PROFILE_UUID=$(grep -a -A 1 '<key>UUID</key>' "$PP_DIR/Eyoonak_App_Store.mobileprovision" | grep -v '<key>' | sed -e 's/<[^>]*>//g' | tr -d ' \t\n\r')
+          if [ -n "$PROFILE_UUID" ]; then
+            cp "$PP_DIR/Eyoonak_App_Store.mobileprovision" "$PP_DIR/$PROFILE_UUID.mobileprovision"
+            echo "Installed Provisioning Profile UUID: $PROFILE_UUID"
+          fi
 
           # 4. Build Signed IPA
           flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
