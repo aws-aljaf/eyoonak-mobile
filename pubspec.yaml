@@ -4,7 +4,7 @@ description: >
   (documentation/06-execution-plan.md). Talks to the real API v1 backend
   only; no mock/fake data anywhere (section 84's platform-wide rule).
 publish_to: 'none'
-version: 0.2.17+20261106
+version: 0.2.17+20261107
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
