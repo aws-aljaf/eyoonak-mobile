@@ -129,9 +129,11 @@ jobs:
         run: |
           # Setup API Key for App Store Connect
           API_KEY_DIR="$HOME/.appstoreconnect/private_keys"
-          mkdir -p "$API_KEY_DIR"
+          mkdir -p "$API_KEY_DIR" "$HOME/.private_keys" "./private_keys"
           echo "$APPLE_API_KEY_BASE64" | base64 --decode > "$API_KEY_DIR/AuthKey_${APPLE_API_KEY_ID}.p8"
-          chmod 600 "$API_KEY_DIR/AuthKey_${APPLE_API_KEY_ID}.p8"
+          cp "$API_KEY_DIR/AuthKey_${APPLE_API_KEY_ID}.p8" "$HOME/.private_keys/"
+          cp "$API_KEY_DIR/AuthKey_${APPLE_API_KEY_ID}.p8" "./private_keys/"
+          chmod 600 "$API_KEY_DIR/AuthKey_${APPLE_API_KEY_ID}.p8" "$HOME/.private_keys/AuthKey_${APPLE_API_KEY_ID}.p8" "./private_keys/AuthKey_${APPLE_API_KEY_ID}.p8"
 
           # Find the IPA file
           IPA_PATH=$(find build/ios/ipa -name "*.ipa" | head -n 1)
